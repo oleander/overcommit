@@ -35,7 +35,7 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
   end
 
   def remove_file(name)
-    File.delete(name)
+    File.delete(name) if File.exist?(name)
   end
 
   before { allow(Overcommit::Utils).to receive_message_chain(:log, :debug) }
@@ -49,18 +49,67 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
   let(:template_context) { new_context(config, ['template.txt', 'template']) }
   subject(:hook)         { hook_for(config, normal_context) }
 
-  describe '#run' do
-    before { add_file    'COMMIT_EDITMSG', '' }
-    after  { remove_file 'COMMIT_EDITMSG' }
+  after { remove_file 'COMMIT_EDITMSG' }
 
-    context 'when the checked out branch matches the pattern' do
-      before { checkout_branch '123-topic' }
+  describe '#run' do
+    context 'when the current branch matches the pattern' do
+      before { add_file 'COMMIT_EDITMSG', message }
+      subject { File.read('COMMIT_EDITMSG') }
+      before { checkout_branch branch }
       before { hook.run }
 
-      it { is_expected.to pass }
+      let(:context) { new_context(config, ['COMMIT_EDITMSG']) }
+      let(:message) { 'This is a commit message' }
+      let(:config) { new_config(options) }
+      let(:options) { { 'replacement_text' => '[\1]', 'branch_pattern' => '(123)-topic' } }
+      let(:branch) { '123-topic' }
 
-      it 'prepends the replacement text' do
-        expect(File.read('COMMIT_EDITMSG')).to eq("[#123]\n")
+      let(:hook) { hook_for(config, context) }
+
+      context 'when the replacement text is wrapped in whitespace' do
+        let(:options) { { 'replacement_text' => ' [\1] ' } }
+        let(:branch) { '123-topic' }
+
+        it { is_expected.to eq(" [123] #{message}\n") }
+      end
+
+      context 'when the replacement text is not wrapped in whitespace' do
+        let(:options) { { 'replacement_text' => 'START [\1] END' } }
+        let(:branch) { '123-topic' }
+
+        it { is_expected.to eq("START [123] END#{message}\n") }
+      end
+
+      context 'when the commit message matches the branch pattern' do
+        let(:message) { '123-topic this is a commit' }
+
+        context 'when its configured to skip if there is a match' do
+          let(:options) { super().merge('skip_if_pattern_matches_commit_message' => true) }
+
+          it { is_expected.not_to start_with('[123]') }
+        end
+
+        context 'when its not configured to skip if there is a match' do
+          let(:options) { super().merge('skip_if_pattern_matches_commit_message' => false) }
+
+          it { is_expected.to start_with('[123]') }
+        end
+      end
+
+      context 'when the commit message does not match the branch pattern' do
+        let(:message) { '789-topic this is a commit' }
+
+        context 'when its configured to skip if there is a match' do
+          let(:options) { super().merge('skip_if_pattern_matches_commit_message' => true) }
+
+          it { is_expected.to start_with('[123]') }
+        end
+
+        context 'when its not configured to skip if there is a match' do
+          let(:options) { super().merge('skip_if_pattern_matches_commit_message' => false) }
+
+          it { is_expected.to start_with('[123]') }
+        end
       end
     end
 
@@ -110,8 +159,9 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
 
     context 'when the replacement text points to a valid filename' do
       before { checkout_branch '123-topic' }
-      before { add_file    'replacement_text.txt', 'FOO' }
-      after  { remove_file 'replacement_text.txt' }
+      before { add_file 'replacement_text.txt', 'FOO' }
+      before { add_file 'COMMIT_EDITMSG', '' }
+      after { remove_file 'replacement_text.txt' }
 
       let(:config) { new_config('replacement_text' => 'replacement_text.txt') }
       let(:normal_context) { new_context(config, ['COMMIT_EDITMSG']) }

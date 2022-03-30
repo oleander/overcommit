@@ -53,7 +53,7 @@ module Overcommit::Hook::PrepareCommitMsg
       @new_template ||=
         begin
           curr_branch = Overcommit::GitRepo.current_branch
-          curr_branch.gsub(branch_pattern, replacement_text).strip
+          curr_branch.gsub(branch_pattern, replacement_text)
         end
     end
 
@@ -69,7 +69,7 @@ module Overcommit::Hook::PrepareCommitMsg
       @replacement_text ||=
         begin
           if File.exist?(replacement_text_config)
-            File.read(replacement_text_config)
+            File.read(replacement_text_config).chomp
           else
             replacement_text_config
           end
@@ -85,7 +85,10 @@ module Overcommit::Hook::PrepareCommitMsg
     end
 
     def skip?
-      skipped_commit_types.include?(commit_message_source)
+      return true if skipped_commit_types.include?(commit_message_source)
+      return false unless config["skip_if_pattern_matches_commit_message"]
+
+      File.read(commit_message_filename).match?(branch_pattern)
     end
   end
 end

@@ -1252,6 +1252,7 @@ PrepareCommitMsg:
   ReplaceBranch:
     enabled: false
     description: 'Prepends the commit message with text based on the branch name'
+    skip_if_pattern_matches_commit_message: false
     branch_pattern: '\A(\d+)-(\w+).*\z'
     replacement_text: '[#\1]'
     skipped_commit_types:
