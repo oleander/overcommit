@@ -69,14 +69,14 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
       let(:hook) { hook_for(config, context) }
 
       context 'when the replacement text is wrapped in whitespace' do
-        let(:options) { { 'replacement_text' => ' [\1] ' } }
+        let(:options) { super().merge({ 'replacement_text' => ' [\1] ' }) }
         let(:branch) { '123-topic' }
 
         it { is_expected.to eq(" [123] #{message}\n") }
       end
 
       context 'when the replacement text is not wrapped in whitespace' do
-        let(:options) { { 'replacement_text' => 'START [\1] END' } }
+        let(:options) { super().merge({ 'replacement_text' => 'START [\1] END' }) }
         let(:branch) { '123-topic' }
 
         it { is_expected.to eq("START [123] END#{message}\n") }
