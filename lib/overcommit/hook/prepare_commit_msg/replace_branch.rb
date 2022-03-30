@@ -85,6 +85,7 @@ module Overcommit::Hook::PrepareCommitMsg
     end
 
     def skip?
+      return true if super
       return true if skipped_commit_types.include?(commit_message_source)
       return false unless config["skip_if_pattern_matches_commit_message"]
 

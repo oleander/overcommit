@@ -59,6 +59,8 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
       before { hook.run }
 
       let(:context) { new_context(config, ['COMMIT_EDITMSG']) }
+      let(:skip_if_true) { ['bash', '-c', 'exit 0'] }
+      let(:skip_if_false) { ['bash', '-c', 'exit 1'] }
       let(:message) { 'This is a commit message' }
       let(:config) { new_config(options) }
       let(:options) { { 'replacement_text' => '[\1]', 'branch_pattern' => '(123)-topic' } }
@@ -86,13 +88,32 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
         context 'when its configured to skip if there is a match' do
           let(:options) { super().merge('skip_if_pattern_matches_commit_message' => true) }
 
-          it { is_expected.not_to start_with('[123]') }
+          context 'when skip_if yields true' do
+            let(:options) { super().merge('skip_if' => skip_if_true) }
+
+            it { is_expected.not_to start_with('[123]') }
+          end
+
+          context 'when skip_if yields false' do
+            let(:options) { super().merge('skip_if' => skip_if_false) }
+
+            it { is_expected.not_to start_with('[123]') }
+          end
         end
 
         context 'when its not configured to skip if there is a match' do
           let(:options) { super().merge('skip_if_pattern_matches_commit_message' => false) }
+          context 'when skip_if yields true' do
+            let(:options) { super().merge('skip_if' => skip_if_true) }
 
-          it { is_expected.to start_with('[123]') }
+            it { is_expected.not_to start_with('[123]') }
+          end
+
+          context 'when skip_if yields false' do
+            let(:options) { super().merge('skip_if' => skip_if_false) }
+
+            it { is_expected.to start_with('[123]') }
+          end
         end
       end
 
@@ -102,13 +123,33 @@ describe Overcommit::Hook::PrepareCommitMsg::ReplaceBranch do
         context 'when its configured to skip if there is a match' do
           let(:options) { super().merge('skip_if_pattern_matches_commit_message' => true) }
 
-          it { is_expected.to start_with('[123]') }
+          context 'when skip_if yields false' do
+            let(:options) { super().merge('skip_if' => skip_if_false) }
+
+            it { is_expected.to start_with('[123]') }
+          end
+
+          context 'when skip_if yields true' do
+            let(:options) { super().merge('skip_if' => skip_if_true) }
+
+            it { is_expected.not_to start_with('[123]') }
+          end
         end
 
         context 'when its not configured to skip if there is a match' do
           let(:options) { super().merge('skip_if_pattern_matches_commit_message' => false) }
 
-          it { is_expected.to start_with('[123]') }
+          context 'when skip_if yields false' do
+            let(:options) { super().merge('skip_if' => skip_if_false) }
+
+            it { is_expected.to start_with('[123]') }
+          end
+
+          context 'when skip_if yields true' do
+            let(:options) { super().merge('skip_if' => skip_if_true) }
+
+            it { is_expected.not_to start_with('[123]') }
+          end
         end
       end
     end
